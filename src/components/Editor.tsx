@@ -1,11 +1,14 @@
 'use client';
 
 import { useStore } from '@nanostores/react';
-import { mainNodesStore, itemNodesStore } from '../store/game';
+import { mainNodesStore, itemNodesStore, gameStateStore, selectedShopItemIndexStore, setShopFocusArea } from '../store/game';
 import type { NodeItem } from '../store/game';
 
 export default function Editor() {
   const nodes = useStore(mainNodesStore);
+  const gameState = useStore(gameStateStore);
+  const selectedShopItemIndex = useStore(selectedShopItemIndexStore);
+  const disableEditing = gameState === 'SHOP' && selectedShopItemIndex !== null;
 
   const removeNode = (index: number) => {
     const nodeToRemove = nodes[index];
@@ -36,33 +39,42 @@ export default function Editor() {
   };
 
   return (
-    <div className="flex flex-col bg-gray-700 p-4 h-full overflow-y-auto">
-      <h2 className="text-2xl text-white mb-4 text-center">main&lt;/&gt;</h2>
-      <div className="flex flex-col gap-2">
-        {nodes.map((node, index) => (
-          <div key={`${node.id}-${index}`} className="flex flex-col items-center">
-            <div className="relative w-full bg-gray-300 rounded p-2 text-black font-mono flex justify-between items-center group">
-              <span>{node.label}</span>
-              <button 
-                onClick={() => removeNode(index)}
-                className="p-1 w-6 h-6 flex items-center justify-center hover:scale-110 transition-transform bg-[#C4AE4B] rounded-full"
-              >
-                <img src="/asset/ui/remove.svg" alt="remove" className="w-full h-full" />
-              </button>
+    <div 
+      className="flex flex-col bg-gray-700 p-4 h-full overflow-y-auto relative"
+      onMouseEnter={() => { if (gameState === 'SHOP') setShopFocusArea('editor'); }}
+      onMouseLeave={() => { if (gameState === 'SHOP') setShopFocusArea(null); }}
+    >
+      <div className={disableEditing ? 'opacity-40 pointer-events-none' : ''}>
+        <h2 className="text-2xl text-white mb-4 text-center">main&lt;/&gt;</h2>
+        <div className="flex flex-col gap-2">
+          {nodes.map((node, index) => (
+            <div key={`${node.id}-${index}`} className="flex flex-col items-center">
+              <div className="relative w-full bg-gray-300 rounded p-2 text-black font-mono flex justify-between items-center group">
+                <span>{node.label}</span>
+                <button 
+                  onClick={() => removeNode(index)}
+                  className="p-1 w-6 h-6 flex items-center justify-center hover:scale-110 transition-transform bg-[#C4AE4B] rounded-full"
+                >
+                  <img src="/asset/ui/remove.svg" alt="remove" className="w-full h-full" />
+                </button>
+              </div>
+              
+              {/* Swap Controls (Visualized as arrows between nodes) */}
+              {index < nodes.length - 1 && (
+                <button 
+                  onClick={() => moveNode(index, 'down')}
+                  className="my-1 hover:scale-110 transition-transform"
+                >
+                  <img src="/asset/ui/replace.svg" alt="swap" className="w-8 h-8" />
+                </button>
+              )}
             </div>
-            
-            {/* Swap Controls (Visualized as arrows between nodes) */}
-            {index < nodes.length - 1 && (
-              <button 
-                onClick={() => moveNode(index, 'down')}
-                className="my-1 hover:scale-110 transition-transform"
-              >
-                <img src="/asset/ui/replace.svg" alt="swap" className="w-8 h-8" />
-              </button>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+      {disableEditing && (
+        <div className="absolute inset-0 bg-black/50 z-10 pointer-events-none" aria-hidden />
+      )}
     </div>
   );
 }
