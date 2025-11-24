@@ -1,11 +1,13 @@
 'use client';
 
 import { useStore } from '@nanostores/react';
-import { playerStore, enemyStore } from '../store/game';
+import { playerStore, enemyStore, gameStateStore } from '../store/game';
 
 export default function Stats() {
   const player = useStore(playerStore);
   const enemy = useStore(enemyStore);
+  const gameState = useStore(gameStateStore);
+  const isBoss = gameState === 'BOSS';
 
   return (
     <div className="relative w-full h-full bg-[#385C85] text-white p-4">
@@ -22,7 +24,9 @@ export default function Stats() {
       {/* Enemy Stats - Centered */}
       <div className="absolute inset-0 flex flex-col items-center justify-end pointer-events-none pb-0">
         <div className="flex flex-col items-center">
-          <h2 className="text-5xl font-bold mb-4 text-red-400">enemy</h2>
+          <h2 className={`text-5xl font-bold mb-4 ${isBoss ? 'text-purple-300' : 'text-red-400'}`}>
+            {isBoss ? 'boss' : 'enemy'}
+          </h2>
           <div className="text-center text-xl font-mono mb-8">
             <div>ATK: {enemy.atk}</div>
             <div>HP: {enemy.hp}</div>

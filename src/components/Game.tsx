@@ -37,29 +37,18 @@ export default function Game() {
         const enemy = mod.enemyStore.get();
         if (enemy.hp <= 0) {
             // Advance event
-             const currentIndex = mod.currentEventIndexStore.get();
-             const events = mod.eventsStore.get();
-             
-             if (currentIndex < events.length - 1) {
-                 mod.currentEventIndexStore.set(currentIndex + 1);
-                 const nextEvent = events[currentIndex + 1];
-                 if (nextEvent === 'battle') {
-                     mod.gameStateStore.set('BATTLE');
-                     mod.enemyStore.setKey('hp', mod.enemyStore.get().maxHp);
-                     mod.enemyStore.setKey('bp', mod.enemyStore.get().maxBp);
-                 } else {
-                     mod.gameStateStore.set('SHOP');
-                 }
-             } else {
-                 if (mod.gameStateStore.get() !== 'BOSS') {
-                      mod.gameStateStore.set('BOSS');
-                      mod.enemyStore.setKey('maxHp', 50);
-                      mod.enemyStore.setKey('hp', 50);
-                      mod.enemyStore.setKey('atk', 30);
-                 } else {
-                     alert("YOU WIN!");
-                     mod.gameStateStore.set('START');
-                 }
+             const result = mod.advanceToNextEvent();
+             if (!result.event) return;
+             if (result.wrapped || result.event === 'select') {
+                 // Enter boss battle on wrap
+                 mod.gameStateStore.set('BOSS');
+                 mod.currentEventIndexStore.set(-1); // no outer node focus in boss
+                 mod.startBossEncounter();
+             } else if (result.event === 'battle') {
+                 mod.gameStateStore.set('BATTLE');
+                 mod.startBattleEncounter();
+             } else if (result.event === 'shop') {
+                 mod.gameStateStore.set('SHOP');
              }
         }
     });

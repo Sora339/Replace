@@ -26,6 +26,24 @@ export type ShopLog = string;
 export const gameStateStore = atom<GameState>('MAP'); // Start at MAP for now to test
 export const eventsStore = atom<EventType[]>([]); // Will be populated on map selection
 export const currentEventIndexStore = atom<number>(0);
+export const traversalDirectionStore = atom<1 | -1>(1);
+export const battleCountStore = atom<number>(0);
+
+const baseEnemyStats: Entity = {
+  hp: 10,
+  maxHp: 10,
+  atk: 20,
+  bp: 5,
+  maxBp: 5,
+};
+
+const bossStats: Entity = {
+  hp: 80,
+  maxHp: 80,
+  atk: 30,
+  bp: 8,
+  maxBp: 8,
+};
 
 export const selectedShopItemIndexStore = atom<number | null>(null);
 export const shopFocusAreaStore = atom<ShopFocusArea>(null);
@@ -39,6 +57,49 @@ export const setShopFocusArea = (area: ShopFocusArea) => {
 
 export const addShopLog = (msg: ShopLog) => {
   shopLogStore.set([...shopLogStore.get(), msg]);
+};
+
+export const advanceToNextEvent = (): { event: EventType | null; wrapped: boolean } => {
+  const dir = traversalDirectionStore.get();
+  const events = eventsStore.get();
+  if (events.length <= 1) return { event: null, wrapped: false };
+  const current = currentEventIndexStore.get();
+  let next = current + dir;
+  let wrapped = false;
+  if (next <= 0) {
+    next = events.length - 1; // wrap, skip select node when going backward
+    wrapped = true;
+  }
+  if (next >= events.length) {
+    next = 1;     // wrap forward, skip select node
+    wrapped = true;
+  }
+  currentEventIndexStore.set(next);
+  return { event: events[next], wrapped };
+};
+
+export const computeScaledEnemyStats = (count: number) => {
+  const hp = baseEnemyStats.maxHp + count * 8;
+  const bp = baseEnemyStats.maxBp + Math.floor(count / 2);
+  const atk = baseEnemyStats.atk + count * 2;
+  return {
+    hp,
+    maxHp: hp,
+    atk,
+    bp,
+    maxBp: bp,
+  };
+};
+
+export const startBattleEncounter = () => {
+  const count = battleCountStore.get();
+  const stats = computeScaledEnemyStats(count);
+  enemyStore.set(stats);
+  battleCountStore.set(count + 1);
+};
+
+export const startBossEncounter = () => {
+  enemyStore.set(bossStats);
 };
 
 export const handleShopSwap = (inventoryIndex: number) => {
@@ -85,13 +146,7 @@ export const playerStore = map<Entity>({
   maxBp: 10,
 });
 
-export const enemyStore = map<Entity>({
-  hp: 10,
-  maxHp: 10,
-  atk: 20,
-  bp: 5,
-  maxBp: 5,
-});
+export const enemyStore = map<Entity>({ ...baseEnemyStats });
 
 export const mainNodesStore = atom<NodeItem[]>([
   { id: '1', label: 'n=5', code: 'n=5', type: 'syntax' },

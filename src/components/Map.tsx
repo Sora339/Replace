@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '@nanostores/react';
-import { gameStateStore, eventsStore, currentEventIndexStore } from '../store/game';
+import { gameStateStore, eventsStore, currentEventIndexStore, traversalDirectionStore, startBattleEncounter, startBossEncounter } from '../store/game';
 import type { EventType } from '../store/game';
 
 const EVENTS_COUNT = 8;
@@ -10,33 +10,42 @@ const EVENTS_COUNT = 8;
 export default function Map({ isModal = false }: { isModal?: boolean }) {
   const events = useStore(eventsStore);
   const currentIndex = useStore(currentEventIndexStore);
+  const gameState = useStore(gameStateStore);
+  const isBoss = gameState === 'BOSS';
+  const traversalDir = useStore(traversalDirectionStore);
 
-  const buildEvents = (direction: 'left' | 'right') => {
+  const buildEvents = () => {
     const newEvents: EventType[] = ['select']; // first is always selection
     for (let i = 1; i < EVENTS_COUNT; i++) {
         if (i === EVENTS_COUNT - 1) {
             newEvents.push('battle'); // Boss (treated as battle for now)
         } else {
              // Simple alternating pattern for demo
-             if (direction === 'left') {
-                 newEvents.push((i - 1) % 2 === 0 ? 'battle' : 'shop');
-             } else {
-                 newEvents.push((i - 1) % 2 === 0 ? 'shop' : 'battle');
-             }
+             newEvents.push((i - 1) % 2 === 0 ? 'battle' : 'shop');
         }
     }
     return newEvents;
   };
 
-  const generateEvents = (direction: 'left' | 'right') => {
-    const newEvents = buildEvents(direction);
-    eventsStore.set(newEvents);
-    currentEventIndexStore.set(1); // skip select node
-    const nextEvent = newEvents[1];
+  const startWithDirection = (direction: 'left' | 'right') => {
+    const base = buildEvents();
+    const body = base.slice(1); // events excluding select
+    const arranged = body; // order stays; direction handled by traversal
+    const evts = [base[0], ...arranged];
+    eventsStore.set(evts);
+    const dirValue = direction === 'right' ? 1 : -1;
+    traversalDirectionStore.set(dirValue);
+    const startIndex = dirValue === 1 ? 1 : evts.length - 1; // first real event depending on direction
+    currentEventIndexStore.set(startIndex);
+    const nextEvent = evts[startIndex];
     if (nextEvent === 'battle') {
         gameStateStore.set('BATTLE');
-    } else {
+        startBattleEncounter();
+    } else if (nextEvent === 'shop') {
         gameStateStore.set('SHOP');
+    } else if (nextEvent === 'select') {
+        gameStateStore.set('BOSS');
+        startBossEncounter();
     }
   };
 
@@ -67,7 +76,8 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
   // Ensure preview circles show before direction selection
   useEffect(() => {
     if (events.length === 0) {
-      eventsStore.set(buildEvents('left'));
+      const base = buildEvents();
+      eventsStore.set(base);
       currentEventIndexStore.set(0);
     }
   }, [events.length]);
@@ -83,7 +93,7 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
         <div className="absolute inset-0 rounded-full border-4 border-gray-600 pointer-events-none" style={{ margin: `${ringMargin}px` }}></div>
 
         {/* Central Boss/Start Node */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gray-300 rounded-full flex items-center justify-center z-10 border-4 border-gray-500">
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full flex items-center justify-center z-10 border-4 border-gray-500 ${isBoss ? 'bg-yellow-300 ring-4 ring-purple-400 shadow-[0_0_25px_rgba(168,85,247,0.8)] scale-105' : 'bg-gray-300'}`}>
            <img src="/asset/enemy/enemy-01.svg" alt="Boss" className="w-32 h-32" />
         </div>
 
@@ -94,7 +104,10 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
             const y = center.y + radius * Math.sin(angle);
             
             const isCurrent = index === currentIndex;
-            const isPast = index < currentIndex;
+            const isPast =
+              traversalDir === 1
+                ? index < currentIndex
+                : index > currentIndex || (index === 0 && currentIndex !== 0);
             
             return (
                 <div 
@@ -124,14 +137,14 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
       {!isModal && (
           <div className="flex gap-8 mt-8">
               <button 
-                  onClick={() => generateEvents('left')}
+                  onClick={() => startWithDirection('left')}
                   className="px-8 py-4 bg-[#538E3A] hover:bg-green-500 rounded text-xl font-bold"
               >
                   左回り
               </button>
               <div className="text-2xl font-bold self-center">OR</div>
               <button 
-                  onClick={() => generateEvents('right')}
+                  onClick={() => startWithDirection('right')}
                   className="px-8 py-4 bg-[#538E3A] hover:bg-green-500 rounded text-xl font-bold"
               >
                   右回り

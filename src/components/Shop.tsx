@@ -1,7 +1,7 @@
 'use client';
 
 import { useStore } from '@nanostores/react';
-import { shopItemsStore, gameStateStore, eventsStore, currentEventIndexStore, selectedShopItemIndexStore, shopFocusAreaStore, setShopFocusArea, shopLogStore } from '../store/game';
+import { shopItemsStore, gameStateStore, currentEventIndexStore, selectedShopItemIndexStore, shopFocusAreaStore, setShopFocusArea, shopLogStore, advanceToNextEvent, startBattleEncounter, startBossEncounter } from '../store/game';
 
 export default function Shop() {
   const shopItems = useStore(shopItemsStore);
@@ -21,24 +21,17 @@ export default function Shop() {
   const handleExit = () => {
       selectedShopItemIndexStore.set(null);
       setShopFocusArea(null);
-      // Advance event index
-      const currentIndex = currentEventIndexStore.get();
-      const events = eventsStore.get();
-      
-      if (currentIndex < events.length - 1) {
-          currentEventIndexStore.set(currentIndex + 1);
-          const nextEvent = events[currentIndex + 1];
-          if (nextEvent === 'battle') {
-              gameStateStore.set('BATTLE');
-          } else {
-              gameStateStore.set('SHOP');
-          }
-      } else {
-          // Boss Battle
-          gameStateStore.set('BOSS'); // Or handle boss logic
-          // For now, just go to battle but maybe set a flag?
-          // The prompt says "Last is Boss". We can treat it as a special battle.
+      const nextEvent = advanceToNextEvent();
+      if (!nextEvent.event) return;
+      if (nextEvent.wrapped || nextEvent.event === 'select') {
+          gameStateStore.set('BOSS');
+          currentEventIndexStore.set(-1);
+          startBossEncounter();
+      } else if (nextEvent.event === 'battle') {
           gameStateStore.set('BATTLE');
+          startBattleEncounter();
+      } else if (nextEvent.event === 'shop') {
+          gameStateStore.set('SHOP');
       }
   };
 

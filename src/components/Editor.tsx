@@ -45,7 +45,7 @@ export default function Editor() {
       onMouseLeave={() => { if (gameState === 'SHOP') setShopFocusArea(null); }}
     >
       <div className={disableEditing ? 'opacity-40 pointer-events-none' : ''}>
-        <h2 className="text-2xl text-white mb-4 text-center">main&lt;/&gt;</h2>
+        <h2 className="text-2xl text-white mb-4 text-center">Editer</h2>
         <div className="flex flex-col gap-2">
           {nodes.map((node, index) => (
             <div key={`${node.id}-${index}`} className="flex flex-col items-center">
