@@ -1,12 +1,21 @@
 import { auth, signOut } from "@/src/auth"
 import { redirect } from "next/navigation"
+import { db } from "@/src/db"
+import { gameResults } from "@/src/db/schema"
+import { eq } from "drizzle-orm"
+import { GameButton } from "@/src/components/GameButton"
 
 export default async function MyPage() {
     const session = await auth()
 
-    if (!session) {
+    if (!session?.user?.id) {
         redirect("/login")
     }
+
+    const results = await db.query.gameResults.findMany({
+        where: eq(gameResults.userId, session.user.id),
+        orderBy: (results, { desc }) => [desc(results.createdAt)],
+    })
 
     return (
         <div className="min-h-screen bg-gray-950 p-8 text-white">
@@ -50,11 +59,26 @@ export default async function MyPage() {
 
                     <div className="rounded-2xl bg-gray-900 p-6 shadow-lg ring-1 ring-white/10">
                         <h2 className="mb-4 text-lg font-semibold text-gray-200">
-                            Session Details
+                            Game Results
                         </h2>
-                        <pre className="overflow-auto rounded-lg bg-gray-950 p-4 text-xs text-gray-300">
-                            {JSON.stringify(session, null, 2)}
-                        </pre>
+                        <div className="mb-4">
+                            <GameButton />
+                        </div>
+                        <div className="space-y-2">
+                            {results.length === 0 ? (
+                                <p className="text-gray-400">No results yet.</p>
+                            ) : (
+                                results.map((result) => (
+                                    <div
+                                        key={result.id}
+                                        className="flex justify-between rounded bg-gray-950 p-3 text-sm"
+                                    >
+                                        <span className="text-gray-300">Cycle: {result.cycle}</span>
+                                        <span className="font-mono text-gray-400">{result.code}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </main>
             </div>
