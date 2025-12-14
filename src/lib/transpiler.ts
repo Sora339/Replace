@@ -86,6 +86,8 @@ export const executeGameLoop = async (nodes: NodeItem[]) => {
         events: eventsStore.get(),
         cycleCount: cycleCountStore.get(),
       };
+      const { gamePlayStatsStore } = await import('../store/game');
+      const playLog = gamePlayStatsStore.get();
       const mapCycle = cycleCountStore.get();
       const mapEventIndex = currentEventIndexStore.get();
       const totalBattles = battleCountStore.get();
@@ -93,6 +95,7 @@ export const executeGameLoop = async (nodes: NodeItem[]) => {
         mapCycle,
         mapEventIndex,
         totalBattles,
+        playLog,
       });
     } catch (e) {
       console.error('Failed to save result status', e);
