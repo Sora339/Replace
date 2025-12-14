@@ -2,18 +2,24 @@
 
 import { useState } from 'react';
 import { useStore } from '@nanostores/react';
-import { itemNodesStore, mainNodesStore, gameStateStore, selectedShopItemIndexStore, handleShopSwap, setShopFocusArea } from '../store/game';
+import { itemNodesStore, mainNodesStore, gameStateStore, selectedShopItemIndexStore, cycleCountStore, handleShopSwap, setShopFocusArea } from '../store/game';
 import { getItemDescription } from '../lib/itemDefinitions';
+import { ScrollLabel } from './ScrollLabel';
 
 export default function Items() {
   const items = useStore(itemNodesStore);
   const gameState = useStore(gameStateStore);
   const selectedShopItemIndex = useStore(selectedShopItemIndexStore);
+  const cycleCount = useStore(cycleCountStore);
   const [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null);
   const [showInfo, setShowInfo] = useState<number | null>(null);
 
   const isShop = gameState === 'SHOP';
+  const isBattle = gameState === 'BATTLE';
   const isSwapMode = isShop && selectedShopItemIndex !== null;
+
+  // ロック条件：3周目のバトル中のみ（ショップでは編集可能、ボス戦では編集可能）
+  const isLocked = cycleCount >= 3 && isBattle;
   
   return (
     <div 
@@ -41,6 +47,8 @@ export default function Items() {
             >
               <button
                 onClick={() => {
+                  if (isLocked && !isSwapMode) return;
+
                   if (isSwapMode) {
                     handleShopSwap(index);
                     return;
@@ -51,8 +59,9 @@ export default function Items() {
                   itemNodesStore.set(newItems);
                   mainNodesStore.set([...mainNodesStore.get(), item]);
                 }}
+                disabled={isLocked && !isSwapMode}
                 className={`w-full h-full bg-[#D9D9D9] border-8 border-[#C4AE4B] p-4 rounded-xl shadow-md transition-transform active:scale-95 hover:bg-gray-50 relative
-                  ${isShop ? 'cursor-pointer' : ''} ${isSwapMode ? 'ring-2 ring-yellow-300' : ''}`}
+                  ${isShop ? 'cursor-pointer' : ''} ${isSwapMode ? 'ring-2 ring-yellow-300' : ''} ${isLocked && !isSwapMode ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {!isShowingInfo ? (
                   <>
@@ -63,7 +72,7 @@ export default function Items() {
                         className="w-full h-full"
                       />
                     </div>
-                    <span className="font-mono font-bold text-gray-800 block text-center mt-2">{item.label}</span>
+                    <ScrollLabel text={item.label} containerClassName="mt-2" />
                   </>
                 ) : (
                   <div className="w-full h-full overflow-y-auto text-left p-2">
@@ -87,6 +96,15 @@ export default function Items() {
           );
         })}
       </div>
+
+      {/* ロックシャドウ */}
+      {isLocked && !isSwapMode && (
+        <div className="absolute inset-0 bg-black/50 z-40 pointer-events-none flex items-center justify-center">
+          <div className="text-white text-xl font-bold bg-black/70 px-6 py-3 rounded-lg">
+            ボス戦まで編集不可
+          </div>
+        </div>
+      )}
     </div>
   );
 }

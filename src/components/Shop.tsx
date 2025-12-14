@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useStore } from '@nanostores/react';
 import { shopItemsStore, gameStateStore, currentEventIndexStore, selectedShopItemIndexStore, shopFocusAreaStore, setShopFocusArea, shopLogStore, advanceToNextEvent, startBattleEncounter, startBossEncounter, addShopLog } from '../store/game';
 import { getItemDescription } from '../lib/itemDefinitions';
+import { ScrollLabel } from './ScrollLabel';
 
 export default function Shop() {
     const shopItems = useStore(shopItemsStore);
@@ -23,7 +24,7 @@ export default function Shop() {
         setShopFocusArea(null);
         const nextEvent = advanceToNextEvent();
         if (!nextEvent.event) return;
-        if (nextEvent.wrapped || nextEvent.event === 'select') {
+        if (nextEvent.event === 'select') {
             gameStateStore.set('BOSS');
             currentEventIndexStore.set(-1);
             startBossEncounter();
@@ -91,7 +92,7 @@ export default function Shop() {
                                             <div className="w-10 h-10 mb-1 mx-auto">
                                                 <img src={`/asset/ui/${item.type}.svg`} alt={item.type} className="w-full h-full" />
                                             </div>
-                                            <span className="font-mono font-bold text-gray-800 block text-center">{item.label}</span>
+                                            <ScrollLabel text={item.label} />
                                         </>
                                     ) : (
                                         <div className="w-full h-full overflow-y-auto text-left p-2">
@@ -106,7 +107,7 @@ export default function Shop() {
                                             e.stopPropagation();
                                             setShowInfo(index);
                                         }}
-                                        className="absolute top-2 right-2 w-6 h-6 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+                                        className="absolute top-3 right-3 w-6 h-6 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
                                     >
                                         <img src="/asset/ui/info.svg" alt="info" className="w-full h-full pointer-events-none" />
                                     </div>

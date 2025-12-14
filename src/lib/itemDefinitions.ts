@@ -160,7 +160,7 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     generateCode: (params) => `atk_inc(${params?.value ?? 1});`,
     executeAction: async (context, params) => {
       const value = (params?.value as ValueType) ?? 1;
-      const increase = value * 5; // 1→5, 2→10, 3→15
+      const increase = value;
       const newAtk = context.player.atk + increase;
       context.updatePlayer({ atk: newAtk });
       context.log(`攻撃力が${increase}上昇！(ATK: ${newAtk})`);
@@ -206,7 +206,7 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     generateCode: (params) => `heal(${params?.value ?? 1});`,
     executeAction: async (context, params) => {
       const value = (params?.value as ValueType) ?? 1;
-      const healAmount = value * 10; // 1→10, 2→20, 3→30
+      const healAmount = value;
       const newHp = Math.min(context.player.maxHp, context.player.hp + healAmount);
       context.updatePlayer({ hp: newHp });
       context.log(`HPが${healAmount}回復！(HP: ${newHp}/${context.player.maxHp})`);
@@ -235,7 +235,7 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     id: 'if_enemy_type',
     label: 'if enemyType=T',
     description: '敵属性に応じた条件分岐。',
-    category: '敵属性',
+    category: '制御構文',
     multiSelect: true,
     parameters: [{ name: 'type', type: 'element', default: 'water' }],
     generateCode: (params) => `if (enemyType === '${params?.type ?? 'water'}') {`,
@@ -246,10 +246,10 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
     id: 'atk_type_assign',
     label: 'atkType=T',
     description: 'プレイヤーの攻撃タイプを宣言する。',
-    category: '敵属性',
+    category: '攻撃',
     multiSelect: true,
     parameters: [{ name: 'type', type: 'element', default: 'water' }],
-    generateCode: (params) => `atkType = '${params?.type ?? 'water'}';`,
+    generateCode: (params) => `setAtkType('${params?.type ?? 'water'}');`,
     executeAction: async (context, params) => {
       const type = (params?.type as ElementType) ?? 'water';
       context.updatePlayer({ atkType: type });
@@ -264,31 +264,33 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
  * ラベルからアイテム定義を検索
  */
 export const findItemDefinitionByLabel = (label: string): ItemDefinition | undefined => {
+  console.log('findItemDefinitionByLabel: searching for', label);
+
   // 各定義とマッチングを試行
   for (const def of Object.values(itemDefinitions)) {
     // 完全一致チェック
     if (def.label === label) {
+      console.log('  -> exact match found:', def.id);
       return def;
     }
 
     // パラメータ付きの場合（multiSelect: true）
     if (def.multiSelect) {
-      // パターンマッチング: X → \d+, T → (water|fire|grass)
-      // エスケープが必要な文字をエスケープ
-      const escapedLabel = def.label
-        .replace(/[+()]/g, '\\$&');  // +, (, ) をエスケープ
-
-      const pattern = escapedLabel
-        .replace(/X/g, '\\d+')
-        .replace(/T/g, '(water|fire|grass)');
-
+      // プレースホルダ T/X を具体値に置換した正規表現でマッチング
+      // 正規表現特殊文字をエスケープ
+      let pattern = def.label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      pattern = pattern.replace(/=T\b/g, '=(water|fire|grass)');
+      pattern = pattern.replace(/=X\b/g, '=\\d+');
       const regex = new RegExp(`^${pattern}$`);
+      console.log(`  -> testing pattern "${pattern}" against label "${label}":`, regex.test(label));
       if (regex.test(label)) {
+        console.log('  -> pattern match found:', def.id);
         return def;
       }
     }
   }
 
+  console.log('  -> no match found');
   return undefined;
 };
 
@@ -297,6 +299,7 @@ export const findItemDefinitionByLabel = (label: string): ItemDefinition | undef
  */
 export const getItemDescription = (label: string): string => {
   const itemDef = findItemDefinitionByLabel(label);
+  console.log('getItemDescription:', { label, found: !!itemDef, description: itemDef?.description });
   return itemDef?.description ?? 'このアイテムの説明はありません。';
 };
 

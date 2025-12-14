@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '@nanostores/react';
-import { gameStateStore, eventsStore, currentEventIndexStore, traversalDirectionStore, startBattleEncounter, startBossEncounter } from '../store/game';
-import type { EventType } from '../store/game';
-
-const EVENTS_COUNT = 8;
+import { gameStateStore, eventsStore, currentEventIndexStore, traversalDirectionStore, cycleCountStore, battleCountStore, startBattleEncounter, startBossEncounter, resetGameState, buildDefaultEvents, EVENTS_COUNT, bossSpriteStore } from '../store/game';
 
 export default function Map({ isModal = false }: { isModal?: boolean }) {
   const events = useStore(eventsStore);
@@ -13,22 +10,14 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
   const gameState = useStore(gameStateStore);
   const isBoss = gameState === 'BOSS';
   const traversalDir = useStore(traversalDirectionStore);
-
-  const buildEvents = () => {
-    const newEvents: EventType[] = ['select']; // first is always selection
-    for (let i = 1; i < EVENTS_COUNT; i++) {
-        if (i === EVENTS_COUNT - 1) {
-            newEvents.push('battle'); // Boss (treated as battle for now)
-        } else {
-             // Simple alternating pattern for demo
-             newEvents.push((i - 1) % 2 === 0 ? 'battle' : 'shop');
-        }
-    }
-    return newEvents;
-  };
+  const cycleCount = useStore(cycleCountStore);
+  const bossSprite = useStore(bossSpriteStore);
 
   const startWithDirection = (direction: 'left' | 'right') => {
-    const base = buildEvents();
+    // ゲーム状態を完全にリセット
+    resetGameState();
+
+    const base = buildDefaultEvents();
     const body = base.slice(1); // events excluding select
     const arranged = body; // order stays; direction handled by traversal
     const evts = [base[0], ...arranged];
@@ -76,7 +65,7 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
   // Ensure preview circles show before direction selection
   useEffect(() => {
     if (events.length === 0) {
-      const base = buildEvents();
+      const base = buildDefaultEvents();
       eventsStore.set(base);
       currentEventIndexStore.set(0);
     }
@@ -84,7 +73,14 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
 
   return (
     <div className={`flex flex-col items-center justify-center h-full px-4 md:px-8 ${isModal ? 'bg-transparent' : 'bg-gray-800'} text-white`}>
-      <div 
+      {/* 周回数表示（ボス戦中は非表示） */}
+      {events.length > 0 && !isBoss && (
+        <div className="mb-4 text-3xl font-bold text-yellow-400">
+          {cycleCount}周目 / 3周
+        </div>
+      )}
+
+      <div
         className="relative"
         ref={containerRef}
         style={{ width: boxSizeCss, height: boxSizeCss }}
@@ -94,7 +90,7 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
 
         {/* Central Boss/Start Node */}
         <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full flex items-center justify-center z-10 border-4 border-gray-500 ${isBoss ? 'bg-yellow-300 ring-4 ring-purple-400 shadow-[0_0_25px_rgba(168,85,247,0.8)] scale-105' : 'bg-gray-300'}`}>
-           <img src="/asset/enemy/enemy-01.svg" alt="Boss" className="w-32 h-32" />
+           <img src={bossSprite} alt="Boss" className="w-32 h-32" />
         </div>
 
         {/* Event Nodes */}
