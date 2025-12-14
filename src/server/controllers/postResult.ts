@@ -25,7 +25,6 @@ export const recordGameResult = async (
     const statsSnapshot = {
         player: stats,
         progress: progress || null,
-        playLog: options?.playLog || null,
     };
 
     if (status === 'SAVED' && !options?.forceNew) {
@@ -45,6 +44,7 @@ export const recordGameResult = async (
                     code: nodes,
                     itemsSnapshot: items,
                     statsSnapshot: statsSnapshot,
+                    playLog: options?.playLog || null,
                     createdAt: new Date(), // Update timestamp to show it's recent
                 })
                 .where(eq(gameResults.id, existingSave.id))
@@ -73,6 +73,7 @@ export const recordGameResult = async (
                     itemsSnapshot: items,
                     statsSnapshot: statsSnapshot,
                     status: status,
+                    playLog: options?.playLog || null,
                     createdAt: new Date(),
                 })
                 .where(eq(gameResults.id, existingSave.id))
@@ -90,6 +91,7 @@ export const recordGameResult = async (
         code: nodes,
         itemsSnapshot: items,
         statsSnapshot: statsSnapshot,
+        playLog: options?.playLog || null,
         status: status,
     }).returning();
 
