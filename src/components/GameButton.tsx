@@ -67,9 +67,14 @@ export function GameButton() {
         <button
             onClick={handleClick}
             disabled={loading}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+            className="relative w-16 h-16 bg-gray-700 rounded-full border-2 border-gray-500 flex items-center justify-center hover:bg-gray-600 transition-colors shadow-lg disabled:opacity-50"
+            title="Save Game Result"
         >
-            {loading ? "Saving..." : "Save Game Result"}
+            <img
+                src="/asset/ui/save.svg"
+                alt="save"
+                className={`w-8 h-8 ${loading ? 'opacity-60 animate-pulse' : ''}`}
+            />
         </button>
     )
 }

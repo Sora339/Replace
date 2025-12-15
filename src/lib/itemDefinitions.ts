@@ -186,7 +186,7 @@ export const itemDefinitions: Record<string, ItemDefinition> = {
   'bp_increase': {
     id: 'bp_increase',
     label: 'bp+=X',
-    description: '行動ポイントを増加する。',
+    description: '行動ポイントを増加する。行動ポイントは、ターン終了後に初期値に戻る。',
     category: '行動',
     multiSelect: true,
     parameters: [{ name: 'value', type: 'value', default: 1 }],
