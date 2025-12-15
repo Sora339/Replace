@@ -49,7 +49,9 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
   // Responsive sizing
   const baseSize = isModal ? 540 : 480; // target pixel size before viewport clamping
   const maxVw = isModal ? 92 : 88;      // clamp to viewport width %
-  const boxSizeCss = `min(${baseSize}px, ${maxVw}vw)`;
+  const maxVh = isModal ? 75 : 78;      // clamp to viewport height % to avoid squish
+  const boxSizeCssBase = `min(${baseSize}px, ${maxVw}vw, ${maxVh}vh)`;
+  const boxSizeCss = `calc(0.9 * ${boxSizeCssBase})`; // overall 90% scale without distorting layout maths
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [boxSizePx, setBoxSizePx] = useState(baseSize);
@@ -80,7 +82,7 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
   }, [events.length]);
 
   return (
-    <div className={`flex flex-col items-center justify-center h-full px-4 md:px-8 ${isModal ? 'bg-transparent' : 'bg-gray-800'} text-white`}>
+    <div className={`flex flex-col items-center justify-center h-full px-4 md:px-8 ${isModal ? 'bg-transparent' : 'bg-gray-800'} text-white ${isModal ? 'overflow-y-auto' : ''}`}>
       {/* 周回数表示（ボス戦中は非表示） */}
       {events.length > 0 && !isBoss && (
         <div className="mb-4 text-3xl font-bold text-yellow-400">
@@ -91,7 +93,7 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
       <div
         className="relative"
         ref={containerRef}
-        style={{ width: boxSizeCss, height: boxSizeCss }}
+        style={{ width: boxSizeCss, height: boxSizeCss, aspectRatio: '1 / 1' }}
       >
         {/* Connecting Lines (Simplified ring) */}
         <div className="absolute inset-0 rounded-full border-4 border-gray-600 pointer-events-none" style={{ margin: `${ringMargin}px` }}></div>
