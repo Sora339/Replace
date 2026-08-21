@@ -18,25 +18,6 @@
 - NextAuth (GitHub プロバイダ)
 - Hono (API ルーティングラッパ)
 
-### 環境変数
-- `DATABASE_URL`: Postgres 接続 URL（drizzle-kit, サーバーで使用）
-- `NEXT_PUBLIC_APP_URL`: 公開 URL（クライアント用）
-
-### セットアップ
-1) 依存インストール  
-`npm install`
-
-2) 環境変数設定  
-`.env.local` などで上記環境変数を設定。
-
-3) DB セットアップ  
-- スキーマ: `src/db/schema.ts`  
-- マイグレーション/プッシュ: `npm run db:push`  
-- スタジオ: `npm run db:studio`
-
-4) 開発サーバー  
-`npm run dev` → http://localhost:3000
-
 ### プロジェクト構成 (主要)
 - `src/app/` … Next.js app routes  
   - `game/page.tsx` … 認証後ゲーム画面  
@@ -73,21 +54,9 @@
 ### 認証
 - NextAuth (GitHub) を使用。`src/app/login/page.tsx` から GitHub でサインイン。
 
-### スクリプト
-- `npm run dev` … 開発サーバー
-- `npm run build` … 本番ビルド
-- `npm run start` … 本番起動
-- `npm run lint` … ESLint
-- `npm run db:push` … Drizzle でスキーマを DB に適用
-- `npm run db:studio` … Drizzle Studio
 
 ### メモ / 実装ノート
 - 状態管理は Nanostores。`resetGameState` でプレイヤー/敵/イベント/ログ/ショップをまとめて初期化。
 - トランスパイラ (`src/lib/transpiler.ts`) はノードをコード化し実行、進行とダメージ計算を更新。バリデーション（enemyType 未設定、if/end 対応不足）も簡易チェック。
 - UI は Tailwind 4 (PostCSS preset) ベース。`src/app/globals.css` にグローバルスタイル。
 - API は Hono で `/api/game/result` (POST 保存) と `/api/mypage/results` (GET 履歴) を提供。
-
-### トラブルシュート
-- **セーブが反映されない**: DB 接続 (`DATABASE_URL`) と認証状態を確認。`game_results` の `status='SAVED'` が 1 件のみ上書きされる仕様。
-- **ロードが新規開始になる**: 最新レコードが `COMPLETED` / `GAME_OVER` の場合は新規開始。セーブしたい場合はゲーム中に `Save Game Result` を押下。
-- **Tailwind が効かない**: `postcss.config.mjs` が Tailwind 4 用になっていることを確認し、`npm run dev` を再起動。
