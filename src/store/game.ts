@@ -40,6 +40,7 @@ const shuffleEvents = (events: EventType[]): EventType[] => {
     const randomIndex = Math.floor(Math.random() * (index + 1));
     [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
   }
+
   return shuffled;
 };
 
@@ -128,11 +129,15 @@ export const advanceToNextEvent = (): { event: EventType | null; wrapped: boolea
 
 export const computeScaledEnemyStats = (count: number): Entity => {
   const cycle = cycleCountStore.get();
+  // 各周回には戦闘が5回ある。セーブ復元などで累計値が不足しても、
+  // 2・3周目の敵が1周目開始時の強さへ戻らないよう最低値を保証する。
+  const minimumBattleCount = (cycle - 1) * 5;
+  const scaledBattleCount = Math.max(count, minimumBattleCount);
 
   // バトル数による増加
-  let hp = baseEnemyStats.hp + count * 30;
-  let bp = baseEnemyStats.bp + Math.floor(count / 4);
-  let atk = baseEnemyStats.atk + Math.floor(count / 2);
+  let hp = baseEnemyStats.hp + scaledBattleCount * 30;
+  let bp = baseEnemyStats.bp + Math.floor(scaledBattleCount / 4);
+  let atk = baseEnemyStats.atk + Math.floor(scaledBattleCount / 2);
 
   // 周回数による大幅な難易度上昇 (2周目以降)
   if (cycle > 1) {

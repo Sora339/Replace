@@ -346,6 +346,16 @@ export const findItemDefinitionByLabel = (label: string): ItemDefinition | undef
  * ラベルから説明を取得
  */
 export const getItemDescription = (label: string): string => {
+  const attackTypeMatch = label.match(/^atkType=(water|fire|grass)$/);
+  if (attackTypeMatch) {
+    const descriptions: Record<ElementType, string> = {
+      water: '攻撃タイプを水に設定する。炎タイプの敵には2倍、水タイプには1倍、草タイプには0.5倍のダメージ。',
+      fire: '攻撃タイプを炎に設定する。草タイプの敵には2倍、炎タイプには1倍、水タイプには0.5倍のダメージ。',
+      grass: '攻撃タイプを草に設定する。水タイプの敵には2倍、草タイプには1倍、炎タイプには0.5倍のダメージ。',
+    };
+    return descriptions[attackTypeMatch[1] as ElementType];
+  }
+
   const itemDef = findItemDefinitionByLabel(label);
   console.log('getItemDescription:', { label, found: !!itemDef, description: itemDef?.description });
   return itemDef?.description ?? 'このアイテムの説明はありません。';
