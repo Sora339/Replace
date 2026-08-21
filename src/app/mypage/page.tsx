@@ -107,7 +107,7 @@ export default async function MyPage() {
                                                 <div className="flex flex-col gap-1">
                                                     <div className="flex flex-wrap items-center gap-3 text-sm">
                                                         <span className="text-yellow-400 font-bold">
-                                                            Map: 周回 {result.mapCycle ?? '-'} / イベント {result.mapEventIndex ?? '-'}
+                                                            Map: 周回 {result.mapCycle ?? '-'} / イベント {result.mapEventIndex === null || result.mapEventIndex === undefined ? '-' : result.mapEventIndex + 1}
                                                         </span>
                                                         <span className="text-blue-300 font-semibold">
                                                             Total Battles: {result.totalBattles ?? '-'}

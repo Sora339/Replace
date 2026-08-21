@@ -20,7 +20,7 @@ export type NodeItem = {
 };
 
 export type GameState = 'START' | 'MAP' | 'BATTLE' | 'SHOP' | 'BOSS';
-export type EventType = 'select' | 'battle' | 'shop' | 'reward' | 'upgrade';
+export type EventType = 'battle' | 'shop' | 'reward' | 'upgrade';
 export type ShopFocusArea = 'shop' | 'editor' | 'items' | null;
 export type ShopLog = string;
 
@@ -29,32 +29,38 @@ const pickRandomEnemySprite = () => enemySpriteOptions[Math.floor(Math.random() 
 
 export const EVENTS_COUNT = 8;
 
-export const buildDefaultEvents = (cycle: number = 1): EventType[] => {
-  // New Cycle Pattern:
-  // 1-2: Battle -> Upgrade -> Battle -> Reward(Fixed) ... -> Battle
-  // 3+: Battle -> Upgrade -> Battle -> Upgrade ... -> Shop (Before Boss)
-  const rewardNode = cycle >= 3 ? 'upgrade' : 'reward';
+const firstCycleEvents: EventType[] = [
+  'battle', 'battle', 'upgrade', 'battle',
+  'reward', 'battle', 'shop', 'battle',
+];
 
-  // 1: Battle
-  // 2: Upgrade
-  // 3: Battle
-  // 4: Reward / Upgrade
-  // 5: Battle
-  // 6: Battle
-  // 7: Shop / Battle (Cycle 3+ is Shop)
-  if (cycle >= 3) {
-    // 3+: ... -> Battle -> Shop(7)
-    return ['select', 'battle', 'upgrade', 'battle', rewardNode, 'battle', 'battle', 'shop'];
-  } else {
-    // 1-2: ... -> Shop(6) -> Battle(7) (Original)
-    return ['select', 'battle', 'upgrade', 'battle', rewardNode, 'battle', 'shop', 'battle'];
+const shuffleEvents = (events: EventType[]): EventType[] => {
+  const shuffled = [...events];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
   }
+  return shuffled;
+};
+
+export const buildDefaultEvents = (cycle: number = 1): EventType[] => {
+  // 1周目は右回りで戦闘から開始。2・3周目は内訳を保ったまま順序だけランダム化する。
+  return cycle === 1 ? [...firstCycleEvents] : shuffleEvents(firstCycleEvents);
+};
+
+export const normalizeEvents = (events: unknown, cycle: number = 1): EventType[] => {
+  const isCurrentEventList =
+    Array.isArray(events) &&
+    events.length === EVENTS_COUNT &&
+    events.every((event) => event === 'battle' || event === 'shop' || event === 'reward' || event === 'upgrade');
+
+  // 旧セーブの select ノードを含むイベント列は、新しい周回ルールへ移行する。
+  return isCurrentEventList ? events : buildDefaultEvents(cycle);
 };
 
 export const gameStateStore = atom<GameState>('MAP'); // Start at MAP for now to test
 export const eventsStore = atom<EventType[]>([]); // Will be populated on map selection
 export const currentEventIndexStore = atom<number>(0);
-export const traversalDirectionStore = atom<1 | -1>(1);
 export const battleCountStore = atom<number>(0);
 export const cycleCountStore = atom<number>(1); // 現在の周回数 (1-3)
 
@@ -96,62 +102,28 @@ export const addShopLog = (msg: ShopLog) => {
   shopLogStore.set([...shopLogStore.get(), msg]);
 };
 
-export const advanceToNextEvent = (): { event: EventType | null; wrapped: boolean; shouldResetMap?: boolean } => {
-  const dir = traversalDirectionStore.get();
+export const advanceToNextEvent = (): { event: EventType | null; wrapped: boolean; shouldStartBoss?: boolean } => {
   const events = eventsStore.get();
-  if (events.length <= 1) return { event: null, wrapped: false };
+  if (events.length === 0) return { event: null, wrapped: false };
   const current = currentEventIndexStore.get();
-  let next = current + dir;
-  let wrapped = false;
+  const next = current + 1;
 
-  // 左回り（後方）のラップ処理
-  if (next <= 0) {
-    const currentCycle = cycleCountStore.get();
-    if (currentCycle >= 3) {
-      // 3周目終了後はボス戦へ
-      return { event: 'select', wrapped: true };
-    } else {
-      // 次の周回へ
-      const nextCycle = currentCycle + 1;
-      cycleCountStore.set(nextCycle);
-
-      // イベント情報を更新 (3周目以降の変化などを反映)
-      const nextEvents = buildDefaultEvents(nextCycle);
-      eventsStore.set(nextEvents);
-
-      next = nextEvents.length - 1; // wrap backward, skip select node
-      wrapped = true;
-      currentEventIndexStore.set(next);
-      // マップをリセットして次の周回を開始
-      return { event: nextEvents[next], wrapped: true, shouldResetMap: true };
-    }
-  }
-
-  // 右回り（前方）のラップ処理
   if (next >= events.length) {
     const currentCycle = cycleCountStore.get();
     if (currentCycle >= 3) {
-      // 3周目終了後はボス戦へ
-      return { event: 'select', wrapped: true };
-    } else {
-      // 次の周回へ
-      const nextCycle = currentCycle + 1;
-      cycleCountStore.set(nextCycle);
-
-      // イベント情報を更新 (3周目以降の変化などを反映)
-      const nextEvents = buildDefaultEvents(nextCycle);
-      eventsStore.set(nextEvents);
-
-      next = 1;     // wrap forward, skip select node
-      wrapped = true;
-      currentEventIndexStore.set(next);
-      // マップをリセットして次の周回を開始
-      return { event: nextEvents[next], wrapped: true, shouldResetMap: true };
+      return { event: null, wrapped: true, shouldStartBoss: true };
     }
+
+    const nextCycle = currentCycle + 1;
+    const nextEvents = buildDefaultEvents(nextCycle);
+    cycleCountStore.set(nextCycle);
+    eventsStore.set(nextEvents);
+    currentEventIndexStore.set(0);
+    return { event: nextEvents[0], wrapped: true };
   }
 
   currentEventIndexStore.set(next);
-  return { event: events[next], wrapped };
+  return { event: events[next], wrapped: false };
 };
 
 export const computeScaledEnemyStats = (count: number): Entity => {
@@ -471,7 +443,6 @@ export const resetGameState = () => {
   const baseEvents = buildDefaultEvents();
   eventsStore.set(baseEvents);
   currentEventIndexStore.set(0);
-  traversalDirectionStore.set(1);
   battleCountStore.set(0);
   cycleCountStore.set(1);
 
@@ -489,4 +460,8 @@ export const resetGameState = () => {
   shopLogStore.set([
     'よく来たね！早速、手持ちのアイテムと交換する商品を選んでもいいし、EditerエリアとItemエリアで手持ちを整理してから選んでもいいよ！',
   ]);
+
+  // 方向は右回りに固定し、最初のイベントである戦闘を開始する。
+  gameStateStore.set('BATTLE');
+  startBattleEncounter();
 };

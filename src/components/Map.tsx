@@ -2,49 +2,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '@nanostores/react';
-import { gameStateStore, eventsStore, currentEventIndexStore, traversalDirectionStore, cycleCountStore, battleCountStore, startBattleEncounter, startBossEncounter, resetGameState, buildDefaultEvents, EVENTS_COUNT, bossSpriteStore, generateFixedRewardItems, showUpgradeModalStore } from '../store/game';
+import { gameStateStore, eventsStore, currentEventIndexStore, cycleCountStore, buildDefaultEvents, EVENTS_COUNT, bossSpriteStore, type EventType } from '../store/game';
+
+const eventPresentation: Record<EventType, { label: string; icon: string }> = {
+  battle: { label: '戦闘', icon: '/asset/ui/attack.svg' },
+  shop: { label: 'ショップ', icon: '/asset/ui/store.svg' },
+  reward: { label: 'アイテム入手', icon: '/asset/ui/element.svg' },
+  upgrade: { label: 'アイテム強化', icon: '/asset/ui/behavior.svg' },
+};
 
 export default function Map({ isModal = false }: { isModal?: boolean }) {
   const events = useStore(eventsStore);
   const currentIndex = useStore(currentEventIndexStore);
   const gameState = useStore(gameStateStore);
   const isBoss = gameState === 'BOSS';
-  const traversalDir = useStore(traversalDirectionStore);
   const cycleCount = useStore(cycleCountStore);
   const bossSprite = useStore(bossSpriteStore);
-
-  const startWithDirection = (direction: 'left' | 'right') => {
-    // ゲーム状態を完全にリセット
-    resetGameState();
-
-    const base = buildDefaultEvents();
-    const body = base.slice(1); // events excluding select
-    const arranged = body; // order stays; direction handled by traversal
-    const evts = [base[0], ...arranged];
-    eventsStore.set(evts);
-    const dirValue = direction === 'right' ? 1 : -1;
-    traversalDirectionStore.set(dirValue);
-    const startIndex = dirValue === 1 ? 1 : evts.length - 1; // first real event depending on direction
-    currentEventIndexStore.set(startIndex);
-    const nextEvent = evts[startIndex];
-
-    if (nextEvent === 'battle') {
-      gameStateStore.set('BATTLE');
-      startBattleEncounter();
-    } else if (nextEvent === 'shop') {
-      gameStateStore.set('SHOP');
-    } else if (nextEvent === 'select') {
-      gameStateStore.set('BOSS');
-      startBossEncounter();
-    } else if (nextEvent === 'reward') {
-      // 固定報酬生成
-      generateFixedRewardItems();
-      // マップ表示のままモーダルを出す
-    } else if (nextEvent === 'upgrade') {
-      // アップグレードモーダル表示
-      showUpgradeModalStore.set(true);
-    }
-  };
 
   // Responsive sizing
   const baseSize = isModal ? 540 : 480; // target pixel size before viewport clamping
@@ -72,7 +45,7 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
   const radius = boxSizePx / 2 - ringMargin;
   const center = { x: boxSizePx / 2, y: boxSizePx / 2 };
 
-  // Ensure preview circles show before direction selection
+  // Ensure event circles are available while a saved game is loading.
   useEffect(() => {
     if (events.length === 0) {
       const base = buildDefaultEvents();
@@ -85,8 +58,11 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
     <div className={`flex flex-col items-center justify-center h-full px-4 md:px-8 ${isModal ? 'bg-transparent' : 'bg-gray-800'} text-white ${isModal ? 'overflow-y-auto' : ''}`}>
       {/* 周回数表示（ボス戦中は非表示） */}
       {events.length > 0 && !isBoss && (
-        <div className="mb-4 text-3xl font-bold text-yellow-400">
-          {cycleCount}周目 / 3周
+        <div className="mb-4 flex flex-col items-center">
+          <div className="text-3xl font-bold text-yellow-400">
+            {cycleCount}周目 / 3周
+          </div>
+          <span className="-mt-1 text-3xl font-bold leading-none text-yellow-400" aria-label="右回り">→</span>
         </div>
       )}
 
@@ -110,33 +86,24 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
           const y = center.y + radius * Math.sin(angle);
 
           const isCurrent = index === currentIndex;
-          const isPast =
-            traversalDir === 1
-              ? index < currentIndex
-              : index > currentIndex || (index === 0 && currentIndex !== 0);
+          const isPast = index < currentIndex;
+          // セーブデータの移行中など、想定外の値でもマップ描画を止めない。
+          const presentation = eventPresentation[event] ?? eventPresentation.battle;
 
           return (
             <div
               key={index}
-              className={`absolute w-16 h-16 rounded-full flex items-center justify-center border-2 
+              className={`absolute w-[72px] h-[72px] rounded-full flex items-center justify-center border-2
                         ${isCurrent ? 'bg-yellow-400 border-yellow-600 scale-125 z-20' :
                   isPast ? 'bg-gray-600 border-gray-700' : 'bg-white border-gray-300'}
                         transition-all duration-500`}
-              style={{ left: x - 32, top: y - 32 }}
+              style={{ left: x - 36, top: y - 36 }}
+              aria-label={presentation.label}
+              title={presentation.label}
             >
               <img
-                src={
-                  event === 'battle'
-                    ? '/asset/ui/attack.svg'
-                    : event === 'shop'
-                      ? '/asset/ui/store.svg'
-                      : event === 'select'
-                        ? '/asset/ui/select.svg'
-                        : event === 'reward'
-                          ? '/asset/ui/element.svg'
-                          : '/asset/ui/behavior.svg' // upgrade
-                }
-                alt={event}
+                src={presentation.icon}
+                alt={presentation.label}
                 className="w-8 h-8"
               />
             </div>
@@ -144,23 +111,16 @@ export default function Map({ isModal = false }: { isModal?: boolean }) {
         })}
       </div>
 
-      {!isModal && (
-        <div className="flex gap-8 mt-8">
-          <button
-            onClick={() => startWithDirection('left')}
-            className="px-8 py-4 bg-[#538E3A] hover:bg-green-500 rounded text-xl font-bold"
-          >
-            左回り
-          </button>
-          <div className="text-2xl font-bold self-center">OR</div>
-          <button
-            onClick={() => startWithDirection('right')}
-            className="px-8 py-4 bg-[#538E3A] hover:bg-green-500 rounded text-xl font-bold"
-          >
-            右回り
-          </button>
-        </div>
-      )}
+      <div className="mt-8 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-gray-200" aria-label="イベントアイコンの凡例">
+        {Object.values(eventPresentation).map(({ label, icon }) => (
+          <div key={label} className="flex items-center gap-1.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded bg-white">
+              <img src={icon} alt="" className="w-5 h-5" />
+            </span>
+            {label}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

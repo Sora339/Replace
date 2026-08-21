@@ -7,7 +7,6 @@ import {
   itemNodesStore,
   gameStateStore,
   currentEventIndexStore,
-  eventsStore,
   advanceToNextEvent,
   startBattleEncounter,
   startBossEncounter,
@@ -39,13 +38,15 @@ export default function ItemRewardModal() {
 
     // 次のイベントに進む
     const nextEvent = advanceToNextEvent();
-    if (!nextEvent.event) return;
-
-    if (nextEvent.event === 'select') {
+    if (nextEvent.shouldStartBoss) {
       gameStateStore.set('BOSS');
       currentEventIndexStore.set(-1);
       startBossEncounter();
-    } else if (nextEvent.event === 'battle') {
+      return;
+    }
+    if (!nextEvent.event) return;
+
+    if (nextEvent.event === 'battle') {
       gameStateStore.set('BATTLE');
       startBattleEncounter();
     } else if (nextEvent.event === 'shop') {

@@ -120,7 +120,7 @@ export default function Game() {
                                     if (progress.currentEventIndex !== undefined) mod.currentEventIndexStore.set(progress.currentEventIndex);
                                     if (progress.cycleCount !== undefined) mod.cycleCountStore.set(progress.cycleCount);
                                     if (progress.gameState) mod.gameStateStore.set(progress.gameState);
-                                    if (progress.events) mod.eventsStore.set(progress.events);
+                                    if (progress.events) mod.eventsStore.set(mod.normalizeEvents(progress.events, progress.cycleCount));
                                 });
                             }
                         } else if (isLegacyStatsSnapshot(snap)) {
@@ -133,7 +133,7 @@ export default function Game() {
                                     if (progress.currentEventIndex !== undefined) mod.currentEventIndexStore.set(progress.currentEventIndex);
                                     if (progress.cycleCount !== undefined) mod.cycleCountStore.set(progress.cycleCount);
                                     if (progress.gameState) mod.gameStateStore.set(progress.gameState);
-                                    if (progress.events) mod.eventsStore.set(progress.events);
+                                    if (progress.events) mod.eventsStore.set(mod.normalizeEvents(progress.events, progress.cycleCount));
                                 });
                             }
                         }

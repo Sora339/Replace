@@ -5,5 +5,9 @@ import { db } from "@/src/db"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     adapter: DrizzleAdapter(db),
-    providers: [GitHub],
+    providers: [
+        GitHub({
+            issuer: "https://github.com/login/oauth",
+        }),
+    ],
 })
